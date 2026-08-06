@@ -40,7 +40,7 @@ class TombstoneListener:
         block.set_type("minecraft:chest")
         
         player_inv.clear()
-        self.manager.add_tomb(block, player.unique_id, drops, xp)
+        self.manager.add_tomb(block, player.unique_id, player.name, drops, xp)
         
         x, y, z = int(location.x), int(location.y), int(location.z)
         player.send_message(f"§c[Tombstone]§7 You died! Your inventory and {xp} XP have been secured in a chest at: §eX:{x} Y:{y} Z:{z}")
@@ -95,13 +95,11 @@ class TombstoneListener:
                 
             if self.manager.config.get("give_death_compass", False):
                 inv = event.player.inventory
-                x, y, z = block.x, block.y, block.z
-                target_name = f"§5Tombstone Compass§r\n§eX:{x} Y:{y} Z:{z}"
-                
                 for i in range(inv.size):
                     item = inv.get_item(i)
-                    if item and item.item_meta.has_display_name and item.item_meta.display_name == target_name:
-                        inv.clear(i)
+                    if item and item.type != "minecraft:air" and "compass" in item.type.lower():
+                        if item.item_meta.has_display_name and "Tombstone" in item.item_meta.display_name:
+                            inv.clear(i)
                 
             block.set_type("minecraft:air")
             self.manager.remove_tomb(block)
