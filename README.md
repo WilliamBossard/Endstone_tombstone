@@ -10,8 +10,10 @@ When a player dies, instead of dropping their items on the ground where they mig
 - Auto-cleanup: Once the owner interacts with the chest to take their items, the chest automatically disappears.
 - XP Recovery: The player's exact amount of XP is saved in the tomb and fully restored upon collection.
 - Configurable Expiration: Tombstones can optionally expire after a certain amount of time, allowing any player to loot them.
-- Floating Text (Hologram): A hologram appears above the tombstone indicating the owner's name and the remaining time before expiration (if enabled).
 - Death Compass (Optional): Players can receive a special compass upon respawning with the exact coordinates of their death to help them find their tomb.
+
+## Planned Features
+- Floating Text (Hologram): A hologram above the tombstone indicating the owner's name and the remaining time before expiration (temporarily disabled due to an Endstone API crash).
 
 ## Virtual Tombstone System
 Due to current Endstone API limitations (v0.11), the chest block itself does not contain the items. The items and XP are securely stored in the server's memory.

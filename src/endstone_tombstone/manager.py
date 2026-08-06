@@ -17,12 +17,9 @@ class TombstoneManager:
         
         self.tombs: Dict[str, str] = {}
         self.tomb_items: Dict[str, Dict[str, Any]] = {}
-        self.holograms: Dict[str, Any] = {}
         
         self.load_config()
         self.load_data()
-        
-        self.plugin.server.scheduler.run_task(self.plugin, self.update_holograms, delay=20, period=20)
 
     def load_config(self):
         if not os.path.exists(self.data_dir):
@@ -71,21 +68,6 @@ class TombstoneManager:
             "creation_time": time.time()
         }
         self.save_data()
-        
-        try:
-            loc = block.location
-            actor_loc = loc
-            actor_loc.x += 0.5
-            actor_loc.y += 1.0
-            actor_loc.z += 0.5
-            
-            dimension = block.dimension
-            actor = dimension.spawn_actor(actor_loc, "minecraft:armor_stand")
-            actor.is_name_tag_always_visible = True
-            actor.name_tag = f"§eTombe de {player_name}"
-            self.holograms[key] = actor
-        except Exception as e:
-            self.plugin.logger.error(f"Failed to spawn hologram: {e}")
 
     def remove_tomb(self, block: Block):
         key = self._get_key(block)
@@ -93,13 +75,6 @@ class TombstoneManager:
             del self.tombs[key]
         if key in self.tomb_items:
             del self.tomb_items[key]
-            
-        if key in self.holograms:
-            try:
-                self.holograms[key].remove()
-            except:
-                pass
-            del self.holograms[key]
             
         self.save_data()
 
@@ -115,37 +90,6 @@ class TombstoneManager:
 
     def _get_key(self, block: Block) -> str:
         return f"{block.dimension.name}:{block.x}:{block.y}:{block.z}"
-
-    def update_holograms(self):
-        expiration_seconds = self.config.get("expiration_seconds", 0)
-        
-        for key, actor in list(self.holograms.items()):
-            try:
-                if not actor.is_valid:
-                    continue
-                    
-                data = self.tomb_items.get(key)
-                if not data:
-                    continue
-                    
-                owner_name = data.get("owner_name", "Inconnu")
-                creation_time = data.get("creation_time", 0)
-                
-                if expiration_seconds <= 0:
-                    actor.name_tag = f"§eTombe de {owner_name}"
-                    continue
-                    
-                elapsed = time.time() - creation_time
-                remaining = expiration_seconds - elapsed
-                
-                if remaining <= 0:
-                    actor.name_tag = f"§eTombe de {owner_name}\n§c§l[EXPIRE]"
-                else:
-                    mins = int(remaining // 60)
-                    secs = int(remaining % 60)
-                    actor.name_tag = f"§eTombe de {owner_name}\n§bExpire dans {mins}m {secs}s"
-            except Exception:
-                pass
 
     def drop_all_items(self):
         to_remove = []
@@ -179,12 +123,5 @@ class TombstoneManager:
                 del self.tombs[key]
             if key in self.tomb_items:
                 del self.tomb_items[key]
-                
-        for key, actor in self.holograms.items():
-            try:
-                actor.remove()
-            except:
-                pass
-        self.holograms.clear()
                 
         self.save_data()
