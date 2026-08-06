@@ -27,7 +27,10 @@ class TombstoneListener:
             if equip and equip.type != "minecraft:air":
                 drops.append(equip)
                 
+        self.plugin.logger.info(f"[DEBUG] {player.name} died. Items found in inventory: {len(drops)}")
+                
         if not drops:
+            self.plugin.logger.info(f"[DEBUG] No items found for {player.name}. No tombstone created.")
             return
             
         location = player.location
