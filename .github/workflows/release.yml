@@ -1,0 +1,28 @@
+name: Build and Release Wheel
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Build wheel
+        run: pip wheel -w dist .
+        
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.whl
