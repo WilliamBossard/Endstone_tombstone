@@ -59,7 +59,7 @@ class TombstoneListener:
     def on_block_break(self, event: BlockBreakEvent):
         block = event.block
         if self.manager.is_tomb(block):
-            event.cancelled = True
+            event.is_cancelled = True
             event.player.send_message("§c[Tombstone]§7 This tombstone chest is indestructible! Please interact with it to claim the items.")
 
     @event_handler(priority=EventPriority.HIGH)
@@ -69,7 +69,7 @@ class TombstoneListener:
             return
             
         if self.manager.is_tomb(block):
-            event.cancelled = True
+            event.is_cancelled = True
             owner_uuid = self.manager.get_tomb_owner(block)
             tomb_data = self.manager.get_tomb_data(block)
             creation_time = tomb_data.get("creation_time", time.time())
@@ -97,7 +97,7 @@ class TombstoneListener:
                 inv = event.player.inventory
                 for i in range(inv.size):
                     item = inv.get_item(i)
-                    if item and item.type != "minecraft:air" and "compass" in item.type.lower():
+                    if item and item.type != "minecraft:air" and (item.type == "minecraft:recovery_compass" or item.type == "minecraft:compass"):
                         if item.item_meta.has_display_name and "Tombstone" in item.item_meta.display_name:
                             inv.clear(i)
                 

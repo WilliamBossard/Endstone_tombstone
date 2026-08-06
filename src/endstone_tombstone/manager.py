@@ -84,9 +84,6 @@ class TombstoneManager:
             actor.is_name_tag_always_visible = True
             actor.name_tag = f"§eTombe de {player_name}"
             self.holograms[key] = actor
-            
-            cmd = f"effect @e[type=armor_stand,x={int(loc.x)},y={int(loc.y)},z={int(loc.z)},r=2] invisibility 999999 0 true"
-            self.plugin.server.dispatch_command(self.plugin.server.command_sender, cmd)
         except Exception as e:
             self.plugin.logger.error(f"Failed to spawn hologram: {e}")
 
