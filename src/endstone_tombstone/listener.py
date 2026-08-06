@@ -7,7 +7,6 @@ from endstone.event import (
 )
 from endstone.plugin import Plugin
 from endstone.block import Block
-import endstone
 
 class TombstoneListener:
     def __init__(self, plugin: Plugin, manager):
@@ -37,29 +36,18 @@ class TombstoneListener:
         block = location.block
         block.set_type("minecraft:chest")
         
-        state = block.capture_state()
-        if isinstance(state, endstone.block.Container):
-            chest_inv = state.inventory
-            
-            for item in drops:
-                if item and item.type != "minecraft:air":
-                    chest_inv.add_item(item)
-                    
-            state.update(True)
-            player_inv.clear() # Clear player inventory to try preventing drops
-            self.manager.add_tomb(block, player.unique_id)
-            
-            x, y, z = int(location.x), int(location.y), int(location.z)
-            player.send_message(f"§c[Tombstone]§7 You died! Your inventory has been secured in a chest at: §eX:{x} Y:{y} Z:{z}")
-        else:
-            self.plugin.logger.error("Failed to place a container at death location!")
+        player_inv.clear()
+        self.manager.add_tomb(block, player.unique_id, drops)
+        
+        x, y, z = int(location.x), int(location.y), int(location.z)
+        player.send_message(f"§c[Tombstone]§7 You died! Your inventory has been secured in a chest at: §eX:{x} Y:{y} Z:{z}")
 
     @event_handler(priority=EventPriority.HIGH)
     def on_block_break(self, event: BlockBreakEvent):
         block = event.block
         if self.manager.is_tomb(block):
             event.cancelled = True
-            event.player.send_message("§c[Tombstone]§7 This tombstone chest is indestructible!")
+            event.player.send_message("§c[Tombstone]§7 This tombstone chest is indestructible! Please interact with it to claim your items.")
 
     @event_handler(priority=EventPriority.HIGH)
     def on_player_interact(self, event: PlayerInteractEvent):
@@ -68,7 +56,18 @@ class TombstoneListener:
             return
             
         if self.manager.is_tomb(block):
+            event.cancelled = True
             owner_uuid = self.manager.get_tomb_owner(block)
+            
             if str(event.player.unique_id) != owner_uuid:
-                event.cancelled = True
                 event.player.send_message("§c[Tombstone]§7 This tombstone chest does not belong to you!")
+                return
+                
+            items = self.manager.get_tomb_items(block)
+            dimension = block.dimension
+            for item in items:
+                dimension.drop_item(block.location, item)
+                
+            block.set_type("minecraft:air")
+            self.manager.remove_tomb(block)
+            event.player.send_message("§a[Tombstone]§7 You have recovered your items!")

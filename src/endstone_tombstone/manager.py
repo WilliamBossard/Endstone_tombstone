@@ -1,9 +1,10 @@
 import json
 import os
-from typing import Dict, Any
+from typing import Dict, List, Any
 
 from endstone.plugin import Plugin
 from endstone.block import Block
+from endstone.inventory import ItemStack
 
 class TombstoneManager:
     def __init__(self, plugin: Plugin):
@@ -11,9 +12,9 @@ class TombstoneManager:
         self.data_dir = os.path.join(plugin.data_folder)
         self.data_file = os.path.join(self.data_dir, "tombs.json")
         self.tombs: Dict[str, str] = {}
+        self.tomb_items: Dict[str, List[ItemStack]] = {}
         
         self.load_data()
-        self.plugin.server.scheduler.run_task(self.plugin, self.check_empty_tombs, delay=20, period=20)
 
     def load_data(self):
         if not os.path.exists(self.data_dir):
@@ -37,16 +38,19 @@ class TombstoneManager:
         except Exception as e:
             self.plugin.logger.error(f"Failed to save tombs data: {e}")
 
-    def add_tomb(self, block: Block, player_uuid: str):
+    def add_tomb(self, block: Block, player_uuid: str, items: List[ItemStack]):
         key = self._get_key(block)
         self.tombs[key] = str(player_uuid)
+        self.tomb_items[key] = items
         self.save_data()
 
     def remove_tomb(self, block: Block):
         key = self._get_key(block)
         if key in self.tombs:
             del self.tombs[key]
-            self.save_data()
+        if key in self.tomb_items:
+            del self.tomb_items[key]
+        self.save_data()
 
     def is_tomb(self, block: Block) -> bool:
         return self._get_key(block) in self.tombs
@@ -54,12 +58,16 @@ class TombstoneManager:
     def get_tomb_owner(self, block: Block) -> str:
         return self.tombs.get(self._get_key(block))
 
+    def get_tomb_items(self, block: Block) -> List[ItemStack]:
+        key = self._get_key(block)
+        return self.tomb_items.get(key, [])
+
     def _get_key(self, block: Block) -> str:
         return f"{block.dimension.name}:{block.x}:{block.y}:{block.z}"
 
-    def check_empty_tombs(self):
+    def drop_all_items(self):
         to_remove = []
-        for key in self.tombs.keys():
+        for key, items in self.tomb_items.items():
             try:
                 dim_name, x_str, y_str, z_str = key.split(":")
                 x, y, z = int(x_str), int(y_str), int(z_str)
@@ -74,29 +82,20 @@ class TombstoneManager:
                     continue
                 
                 block = dimension.get_block_at(x, y, z)
-                if block.type != "minecraft:chest":
-                    to_remove.append(key)
-                    continue
+                for item in items:
+                    dimension.drop_item(block.location, item)
+                
+                if block.type == "minecraft:chest":
+                    block.set_type("minecraft:air")
                     
-                import endstone
-                state = block.capture_state()
-                if isinstance(state, endstone.block.Container):
-                    inv = state.inventory
-                    is_empty = True
-                    for i in range(inv.size):
-                        item = inv.get_item(i)
-                        if item is not None and item.type != "minecraft:air":
-                            is_empty = False
-                            break
-                    
-                    if is_empty:
-                        block.set_type("minecraft:air")
-                        to_remove.append(key)
+                to_remove.append(key)
             except Exception as e:
-                self.plugin.logger.warning(f"Error checking tomb {key}: {e}")
+                self.plugin.logger.error(f"Failed to drop items for tomb {key}: {e}")
                 
         for key in to_remove:
-            del self.tombs[key]
-            
-        if to_remove:
-            self.save_data()
+            if key in self.tombs:
+                del self.tombs[key]
+            if key in self.tomb_items:
+                del self.tomb_items[key]
+                
+        self.save_data()
