@@ -17,7 +17,16 @@ class TombstoneListener:
     @event_handler(priority=EventPriority.NORMAL)
     def on_player_death(self, event: PlayerDeathEvent):
         player = event.player
-        drops = event.drops
+        player_inv = player.inventory
+        drops = []
+        for item in player_inv.contents:
+            if item and item.type != "minecraft:air":
+                drops.append(item)
+                
+        for equip in [player_inv.helmet, player_inv.chestplate, player_inv.leggings, player_inv.boots, player_inv.item_in_off_hand]:
+            if equip and equip.type != "minecraft:air":
+                drops.append(equip)
+                
         if not drops:
             return
             
@@ -27,14 +36,14 @@ class TombstoneListener:
         
         state = block.capture_state()
         if isinstance(state, endstone.block.Container):
-            inv = state.inventory
+            chest_inv = state.inventory
             
             for item in drops:
                 if item and item.type != "minecraft:air":
-                    inv.add_item(item)
+                    chest_inv.add_item(item)
                     
             state.update(True)
-            event.drops.clear()
+            player_inv.clear() # Clear player inventory to try preventing drops
             self.manager.add_tomb(block, player.unique_id)
             
             x, y, z = int(location.x), int(location.y), int(location.z)
