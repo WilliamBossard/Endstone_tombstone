@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "endstone-tombstone"
-version = "1.0.8"
+version = "1.1.0"
 description = "Plugin Tombstone pour serveurs Endstone (Minecraft Bedrock) - Crée un coffre indestructible à la mort du joueur."
 readme = "README.md"
 authors = [

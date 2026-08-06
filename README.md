@@ -2,18 +2,25 @@
 
 A simple and robust death chest plugin for Endstone (Minecraft Bedrock servers).
 
-When a player dies, instead of dropping their items on the ground where they might despawn or get stolen, this plugin securely stores their entire inventory (including armor and off-hand items) in a virtual chest at their exact death location.
+When a player dies, instead of dropping their items on the ground where they might despawn or get stolen, this plugin securely stores their entire inventory (including armor and off-hand items) as well as their Experience (XP) in a virtual chest at their exact death location.
 
 ## Features
 - Secure: Only the player who died can open or break their tombstone chest.
 - Indestructible: Other players and admins cannot break the tombstone block.
 - Auto-cleanup: Once the owner interacts with the chest to take their items, the chest automatically disappears.
-- Coordinates: The player receives a private message with the exact X, Y, Z coordinates of their death.
+- XP Recovery: The player's exact amount of XP is saved in the tomb and fully restored upon collection.
+- Configurable Expiration: Tombstones can optionally expire after a certain amount of time, allowing any player to loot them.
+- Death Compass (Optional): Players can receive a special compass upon respawning with the exact coordinates of their death to help them find their tomb.
 
 ## Virtual Tombstone System
-Due to current Endstone API limitations (v0.11), the chest block itself does not contain the items. The items are securely stored in the server's memory.
-- When you click on your tombstone, the items will instantly pop out and the chest will disappear.
+Due to current Endstone API limitations (v0.11), the chest block itself does not contain the items. The items and XP are securely stored in the server's memory.
+- When you click on your tombstone, the items will instantly drop at your feet, your XP will be restored, and the chest will disappear.
 - If the server restarts or stops normally, all active tombstones will safely drop their items on the ground so nothing is lost.
+
+## Configuration
+When you run the plugin for the first time, a `config.json` file is generated in the plugin's data folder.
+- `expiration_seconds`: The time in seconds before a tombstone loses its owner protection. (Set to `0` for infinite protection). Once expired, any player can click the chest to loot it!
+- `give_death_compass`: Set to `true` to give the player a special compass pointing to their death coordinates when they respawn. The compass is automatically removed from their inventory when they recover their tomb.
 
 ## Installation & Requirements
 

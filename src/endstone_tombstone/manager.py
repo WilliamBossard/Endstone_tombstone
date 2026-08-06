@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from typing import Dict, List, Any
 
 from endstone.plugin import Plugin
@@ -11,10 +12,29 @@ class TombstoneManager:
         self.plugin = plugin
         self.data_dir = os.path.join(plugin.data_folder)
         self.data_file = os.path.join(self.data_dir, "tombs.json")
-        self.tombs: Dict[str, str] = {}
-        self.tomb_items: Dict[str, List[ItemStack]] = {}
+        self.config_file = os.path.join(self.data_dir, "config.json")
+        self.config = {"expiration_seconds": 0, "give_death_compass": False}
         
+        self.tombs: Dict[str, str] = {}
+        self.tomb_items: Dict[str, Dict[str, Any]] = {}
+        
+        self.load_config()
         self.load_data()
+
+    def load_config(self):
+        if not os.path.exists(self.data_dir):
+            os.makedirs(self.data_dir)
+            
+        if os.path.exists(self.config_file):
+            try:
+                with open(self.config_file, "r") as f:
+                    data = json.load(f)
+                    self.config.update(data)
+            except Exception as e:
+                self.plugin.logger.error(f"Failed to load config: {e}")
+                
+        with open(self.config_file, "w") as f:
+            json.dump(self.config, f, indent=4)
 
     def load_data(self):
         if not os.path.exists(self.data_dir):
@@ -38,10 +58,14 @@ class TombstoneManager:
         except Exception as e:
             self.plugin.logger.error(f"Failed to save tombs data: {e}")
 
-    def add_tomb(self, block: Block, player_uuid: str, items: List[ItemStack]):
+    def add_tomb(self, block: Block, player_uuid: str, items: List[ItemStack], xp: int):
         key = self._get_key(block)
         self.tombs[key] = str(player_uuid)
-        self.tomb_items[key] = items
+        self.tomb_items[key] = {
+            "items": items,
+            "xp": xp,
+            "creation_time": time.time()
+        }
         self.save_data()
 
     def remove_tomb(self, block: Block):
@@ -58,9 +82,9 @@ class TombstoneManager:
     def get_tomb_owner(self, block: Block) -> str:
         return self.tombs.get(self._get_key(block))
 
-    def get_tomb_items(self, block: Block) -> List[ItemStack]:
+    def get_tomb_data(self, block: Block) -> Dict[str, Any]:
         key = self._get_key(block)
-        return self.tomb_items.get(key, [])
+        return self.tomb_items.get(key, {})
 
     def _get_key(self, block: Block) -> str:
         return f"{block.dimension.name}:{block.x}:{block.y}:{block.z}"
@@ -82,7 +106,7 @@ class TombstoneManager:
                     continue
                 
                 block = dimension.get_block_at(x, y, z)
-                for item in items:
+                for item in items.get("items", []):
                     dimension.drop_item(block.location, item)
                 
                 if block.type == "minecraft:chest":

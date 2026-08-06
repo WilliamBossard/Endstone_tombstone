@@ -1,3 +1,4 @@
+import time
 from endstone.event import (
     event_handler,
     EventPriority,
@@ -7,6 +8,7 @@ from endstone.event import (
 )
 from endstone.plugin import Plugin
 from endstone.block import Block
+from endstone.inventory import ItemStack
 
 class TombstoneListener:
     def __init__(self, plugin: Plugin, manager):
@@ -26,28 +28,39 @@ class TombstoneListener:
             if equip and equip.type != "minecraft:air":
                 drops.append(equip)
                 
-        self.plugin.logger.info(f"[DEBUG] {player.name} died. Items found in inventory: {len(drops)}")
-                
         if not drops:
-            self.plugin.logger.info(f"[DEBUG] No items found for {player.name}. No tombstone created.")
             return
+            
+        xp = player.total_exp
+        player.exp_level = 0
+        player.exp_progress = 0.0
             
         location = player.location
         block = location.block
         block.set_type("minecraft:chest")
         
         player_inv.clear()
-        self.manager.add_tomb(block, player.unique_id, drops)
+        self.manager.add_tomb(block, player.unique_id, drops, xp)
         
         x, y, z = int(location.x), int(location.y), int(location.z)
-        player.send_message(f"§c[Tombstone]§7 You died! Your inventory has been secured in a chest at: §eX:{x} Y:{y} Z:{z}")
+        player.send_message(f"§c[Tombstone]§7 You died! Your inventory and {xp} XP have been secured in a chest at: §eX:{x} Y:{y} Z:{z}")
+        
+        if self.manager.config.get("give_death_compass", False):
+            try:
+                compass = ItemStack("minecraft:recovery_compass")
+            except:
+                compass = ItemStack("minecraft:compass")
+            meta = compass.item_meta
+            meta.display_name = f"§5Tombstone Compass§r\n§eX:{x} Y:{y} Z:{z}"
+            compass.set_item_meta(meta)
+            player_inv.add_item(compass)
 
     @event_handler(priority=EventPriority.HIGH)
     def on_block_break(self, event: BlockBreakEvent):
         block = event.block
         if self.manager.is_tomb(block):
             event.cancelled = True
-            event.player.send_message("§c[Tombstone]§7 This tombstone chest is indestructible! Please interact with it to claim your items.")
+            event.player.send_message("§c[Tombstone]§7 This tombstone chest is indestructible! Please interact with it to claim the items.")
 
     @event_handler(priority=EventPriority.HIGH)
     def on_player_interact(self, event: PlayerInteractEvent):
@@ -58,16 +71,42 @@ class TombstoneListener:
         if self.manager.is_tomb(block):
             event.cancelled = True
             owner_uuid = self.manager.get_tomb_owner(block)
+            tomb_data = self.manager.get_tomb_data(block)
+            creation_time = tomb_data.get("creation_time", time.time())
             
-            if str(event.player.unique_id) != owner_uuid:
-                event.player.send_message("§c[Tombstone]§7 This tombstone chest does not belong to you!")
+            expiration_seconds = self.manager.config.get("expiration_seconds", 0)
+            is_expired = False
+            if expiration_seconds > 0 and (time.time() - creation_time) > expiration_seconds:
+                is_expired = True
+            
+            if str(event.player.unique_id) != owner_uuid and not is_expired:
+                event.player.send_message("§c[Tombstone]§7 This tombstone chest does not belong to you, and it has not expired yet!")
                 return
                 
-            items = self.manager.get_tomb_items(block)
+            items = tomb_data.get("items", [])
+            xp = tomb_data.get("xp", 0)
+            
             dimension = block.dimension
             for item in items:
                 dimension.drop_item(block.location, item)
                 
+            if xp > 0:
+                event.player.give_exp(xp)
+                
+            if self.manager.config.get("give_death_compass", False):
+                inv = event.player.inventory
+                x, y, z = block.x, block.y, block.z
+                target_name = f"§5Tombstone Compass§r\n§eX:{x} Y:{y} Z:{z}"
+                
+                for i in range(inv.size):
+                    item = inv.get_item(i)
+                    if item and item.item_meta.has_display_name and item.item_meta.display_name == target_name:
+                        inv.clear(i)
+                
             block.set_type("minecraft:air")
             self.manager.remove_tomb(block)
-            event.player.send_message("§a[Tombstone]§7 You have recovered your items!")
+            
+            if str(event.player.unique_id) == owner_uuid:
+                event.player.send_message("§a[Tombstone]§7 You have recovered your items and XP!")
+            else:
+                event.player.send_message("§a[Tombstone]§7 You looted an expired tombstone!")
