@@ -90,7 +90,7 @@ class TombstoneManager:
                             break
                     
                     if is_empty:
-                        block.type = "minecraft:air"
+                        block.set_type("minecraft:air")
                         to_remove.append(key)
             except Exception as e:
                 self.plugin.logger.warning(f"Error checking tomb {key}: {e}")

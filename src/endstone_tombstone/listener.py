@@ -35,7 +35,7 @@ class TombstoneListener:
             
         location = player.location
         block = location.block
-        block.type = "minecraft:chest"
+        block.set_type("minecraft:chest")
         
         state = block.capture_state()
         if isinstance(state, endstone.block.Container):
