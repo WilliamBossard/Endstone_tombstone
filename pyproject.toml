@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "endstone-tombstone"
+version = "1.0.0"
+description = "Plugin Tombstone pour serveurs Endstone (Minecraft Bedrock) - Crée un coffre indestructible à la mort du joueur."
+readme = "README.md"
+authors = [
+    { name = "TombstonePlugin", email = "plugin@example.com" },
+]
+keywords = ["endstone", "plugin", "tombstone", "deathchest", "minecraft", "bedrock"]
+requires-python = ">=3.10"
+dependencies = []
+
+# Point d'entrée obligatoire : Endstone utilise cette clé pour découvrir le plugin
+[project.entry-points."endstone"]
+tombstone = "endstone_tombstone:TombstonePlugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/endstone_tombstone"]
