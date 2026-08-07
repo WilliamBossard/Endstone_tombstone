@@ -99,10 +99,16 @@ class TombstoneManager:
                 x, y, z = int(x_str), int(y_str), int(z_str)
                 
                 dimension = None
-                for dim in self.plugin.server.levels[0].dimensions:
-                    if dim.name == dim_name:
-                        dimension = dim
-                        break
+                if hasattr(self.plugin.server, "level") and self.plugin.server.level:
+                    for dim in self.plugin.server.level.dimensions:
+                        if dim.name == dim_name:
+                            dimension = dim
+                            break
+                elif hasattr(self.plugin.server, "levels") and self.plugin.server.levels:
+                    for dim in self.plugin.server.levels[0].dimensions:
+                        if dim.name == dim_name:
+                            dimension = dim
+                            break
                 
                 if not dimension:
                     continue
