@@ -19,6 +19,5 @@ class TombstonePlugin(Plugin):
     def on_disable(self):
         self.logger.info("Disabling Tombstone Plugin...")
         if self.manager:
-            self.manager.drop_all_items()
             self.manager.save_data()
         self.logger.info("Tombstone Plugin disabled!")
