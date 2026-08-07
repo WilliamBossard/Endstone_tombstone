@@ -15,8 +15,7 @@ class TombstoneManager:
         self.config_file = os.path.join(self.data_dir, "config.json")
         self.config = {"expiration_seconds": 0, "give_death_compass": False}
         
-        self.tombs: Dict[str, str] = {}
-        self.tomb_items: Dict[str, Dict[str, Any]] = {}
+        self.tombs: Dict[str, Dict[str, Any]] = {}
         
         self.load_config()
         self.load_data()
@@ -43,9 +42,22 @@ class TombstoneManager:
         if os.path.exists(self.data_file):
             try:
                 with open(self.data_file, "r") as f:
-                    self.tombs = json.load(f)
+                    raw_tombs = json.load(f)
+                    self.tombs = {}
+                    for k, v in raw_tombs.items():
+                        if isinstance(v, str):
+                            self.tombs[k] = {
+                                "uuid": v,
+                                "owner_name": "Unknown",
+                                "xp": 0,
+                                "creation_time": time.time(),
+                                "items": []
+                            }
+                        else:
+                            self.tombs[k] = v
             except Exception as e:
                 self.plugin.logger.error(f"Failed to load tombs data: {e}")
+                self.tombs = {}
         else:
             self.tombs = {}
 
@@ -60,10 +72,17 @@ class TombstoneManager:
 
     def add_tomb(self, block: Block, player_uuid: str, player_name: str, items: List[ItemStack], xp: int):
         key = self._get_key(block)
-        self.tombs[key] = str(player_uuid)
-        self.tomb_items[key] = {
+        serialized_items = []
+        for item in items:
+            serialized_items.append({
+                "type": str(item.type),
+                "amount": item.amount
+            })
+            
+        self.tombs[key] = {
+            "uuid": str(player_uuid),
             "owner_name": player_name,
-            "items": items,
+            "items": serialized_items,
             "xp": xp,
             "creation_time": time.time()
         }
@@ -73,8 +92,6 @@ class TombstoneManager:
         key = self._get_key(block)
         if key in self.tombs:
             del self.tombs[key]
-        if key in self.tomb_items:
-            del self.tomb_items[key]
             
         self.save_data()
 
@@ -82,52 +99,13 @@ class TombstoneManager:
         return self._get_key(block) in self.tombs
 
     def get_tomb_owner(self, block: Block) -> str:
-        return self.tombs.get(self._get_key(block))
+        tomb = self.tombs.get(self._get_key(block))
+        return tomb.get("uuid") if tomb else None
 
     def get_tomb_data(self, block: Block) -> Dict[str, Any]:
         key = self._get_key(block)
-        return self.tomb_items.get(key, {})
+        return self.tombs.get(key, {})
 
     def _get_key(self, block: Block) -> str:
         return f"{block.dimension.name}:{block.x}:{block.y}:{block.z}"
 
-    def drop_all_items(self):
-        to_remove = []
-        for key, data in self.tomb_items.items():
-            try:
-                dim_name, x_str, y_str, z_str = key.split(":")
-                x, y, z = int(x_str), int(y_str), int(z_str)
-                
-                dimension = None
-                if hasattr(self.plugin.server, "level") and self.plugin.server.level:
-                    for dim in self.plugin.server.level.dimensions:
-                        if dim.name == dim_name:
-                            dimension = dim
-                            break
-                elif hasattr(self.plugin.server, "levels") and self.plugin.server.levels:
-                    for dim in self.plugin.server.levels[0].dimensions:
-                        if dim.name == dim_name:
-                            dimension = dim
-                            break
-                
-                if not dimension:
-                    continue
-                
-                block = dimension.get_block_at(x, y, z)
-                for item in data.get("items", []):
-                    dimension.drop_item(block.location, item)
-                
-                if block.type == "minecraft:chest":
-                    block.set_type("minecraft:air")
-                    
-                to_remove.append(key)
-            except Exception as e:
-                self.plugin.logger.error(f"Failed to drop items for tomb {key}: {e}")
-                
-        for key in to_remove:
-            if key in self.tombs:
-                del self.tombs[key]
-            if key in self.tomb_items:
-                del self.tomb_items[key]
-                
-        self.save_data()

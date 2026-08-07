@@ -87,7 +87,14 @@ class TombstoneListener:
             xp = tomb_data.get("xp", 0)
             
             dimension = block.dimension
-            for item in items:
+            for item_data in items:
+                if isinstance(item_data, dict):
+                    try:
+                        item = ItemStack(item_data["type"], item_data.get("amount", 1))
+                    except:
+                        continue
+                else:
+                    item = item_data
                 dimension.drop_item(block.location, item)
                 
             if xp > 0:
