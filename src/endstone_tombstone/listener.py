@@ -24,10 +24,6 @@ class TombstoneListener:
             if item and item.type != "minecraft:air":
                 drops.append(item)
                 
-        for equip in [player_inv.helmet, player_inv.chestplate, player_inv.leggings, player_inv.boots, player_inv.item_in_off_hand]:
-            if equip and equip.type != "minecraft:air":
-                drops.append(equip)
-                
         if not drops:
             return
             

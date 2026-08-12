@@ -16,6 +16,7 @@ class TombstoneManager:
         self.config = {"expiration_seconds": 0, "give_death_compass": False}
         
         self.tombs: Dict[str, Dict[str, Any]] = {}
+        self.tomb_items: Dict[str, Dict[str, Any]] = {}
         
         self.load_config()
         self.load_data()
@@ -72,6 +73,16 @@ class TombstoneManager:
 
     def add_tomb(self, block: Block, player_uuid: str, player_name: str, items: List[ItemStack], xp: int):
         key = self._get_key(block)
+        
+        # Save exact objects in memory to preserve NBT (bundles, enchants)
+        self.tomb_items[key] = {
+            "owner_name": player_name,
+            "items": items,
+            "xp": xp,
+            "creation_time": time.time()
+        }
+        
+        # Save a serialized version for server restarts (fallback without NBT)
         serialized_items = []
         for item in items:
             serialized_items.append({
@@ -92,6 +103,8 @@ class TombstoneManager:
         key = self._get_key(block)
         if key in self.tombs:
             del self.tombs[key]
+        if key in self.tomb_items:
+            del self.tomb_items[key]
             
         self.save_data()
 
@@ -104,8 +117,9 @@ class TombstoneManager:
 
     def get_tomb_data(self, block: Block) -> Dict[str, Any]:
         key = self._get_key(block)
+        if key in self.tomb_items:
+            return self.tomb_items[key]
         return self.tombs.get(key, {})
 
     def _get_key(self, block: Block) -> str:
         return f"{block.dimension.name}:{block.x}:{block.y}:{block.z}"
-
